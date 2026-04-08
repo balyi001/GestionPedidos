@@ -4,9 +4,9 @@ from . import views
 urlpatterns = [
     # Pedidos
     path('pedidos/', views.listar_pedidos, name='listar_pedidos'),
+    path('pedidos/ver/<int:id>/', views.ver_pedido, name='ver_pedido'),
     path('pedidos/nuevo/', views.crear_pedido, name='crear_pedido'),
     path('pedidos/editar/<int:id>/', views.editar_pedido, name='editar_pedido'),
-    path('pedidos/eliminar/<int:id>/', views.eliminar_pedido, name='eliminar_pedido'),
     path('pedidos/excel/', views.exportar_excel, name='exportar_excel'),
     path('pedidos/pdf/', views.exportar_pdf, name='exportar_pdf'),
 
@@ -21,6 +21,9 @@ urlpatterns = [
     path('productos/nuevo/', views.crear_producto, name='crear_producto'),
     path('productos/editar/<int:id>/', views.editar_producto, name='editar_producto'),
     path('productos/eliminar/<int:id>/', views.eliminar_producto, name='eliminar_producto'),
+
+    # Dashboard
+    path('dashboard/', views.dashboard, name='dashboard'),
 
     # API
     path('logout/', views.logout_view, name='logout'),

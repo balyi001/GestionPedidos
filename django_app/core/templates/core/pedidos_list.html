@@ -18,8 +18,7 @@
                     <th>Fecha</th>
                     <th>Cliente</th>
                     <th>Producto (Cant)</th>
-                    <th>Subtotal</th>
-                    <th>Estado</th>
+                    <th>Total</th> <th>Estado</th>
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
@@ -27,35 +26,35 @@
                 {% for p in page_obj %}
                 <tr>
                     <td>{{ p.fecha|date:"d/m/Y H:i" }}</td>
-                    
                     <td><strong>{{ p.cliente.nombre }}</strong></td>
                     
                     <td>
-                        {% for d in p.detalles.all %}
-                            {{ d.producto.nombre }} (x{{ d.cantidad }})
-                        {% empty %}
-                            <span class="text-muted">Sin productos</span>
-                        {% endfor %}
+                        {% with primer_detalle=p.detalles.first %}
+                            {% if primer_detalle %}
+                                {{ primer_detalle.producto.nombre }} (x{{ primer_detalle.cantidad }})
+                                {% if p.detalles.count > 1 %}
+                                    <span class="text-muted fw-bold">...</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Sin productos</span>
+                            {% endif %}
+                        {% endwith %}
                     </td>
                     
                     <td class="text-success fw-bold">
-                        {% for d in p.detalles.all %}
-                            ${{ d.subtotal|intcomma }}
-                        {% empty %}
-                            $0
-                        {% endfor %}
+                        ${{ p.total_general|default:0|intcomma }}
                     </td>
                     
                     <td>
-                        <span class="badge {% if p.estado == 'Pendiente' %}bg-warning text-dark{% elif p.estado == 'Enviado' %}bg-info{% else %}bg-success{% endif %}">
+                        <span class="badge {% if p.estado == 'Pendiente' %}bg-warning text-dark{% elif p.estado == 'Enviado' %}bg-info{% elif p.estado == 'Cancelado' %}bg-danger{% else %}bg-success{% endif %}">
                             {{ p.estado }}
                         </span>
                     </td>
                     
                     <td class="text-center">
                         <div class="btn-group">
-                            <a href="{% url 'editar_pedido' p.id %}" class="btn btn-warning btn-sm">Editar</a>
-                            <button onclick="confirmarAccion('{% url 'eliminar_pedido' p.id %}', '¿Realmente desea eliminar este pedido?')" class="btn btn-danger btn-sm">Eliminar</button>
+                            <a href="{% url 'ver_pedido' p.id %}" class="btn btn-secondary btn-sm" title="Ver detalle">👁️</a>
+                            <a href="{% url 'editar_pedido' p.id %}" class="btn btn-warning btn-sm" title="Editar pedido">✏️</a>
                         </div>
                     </td>
                 </tr>

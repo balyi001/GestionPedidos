@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 
 class Cliente(models.Model):
     nombre = models.CharField(max_length=100)
@@ -27,13 +28,19 @@ class Pedido(models.Model):
         ('Pendiente', 'Pendiente'),
         ('Enviado', 'Enviado'),
         ('Entregado', 'Entregado'),
+        ('Cancelado', 'Cancelado'),
     ]
-    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT)
     fecha = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='Pendiente')
 
     def __str__(self):
         return f"Pedido {self.id} - {self.cliente.nombre}"
+
+    @property
+    def total(self):
+        # Suma el campo 'subtotal' de todos los detalles relacionados
+        return self.detalles.aggregate(total=Sum('subtotal'))['total'] or 0
 
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, related_name='detalles', on_delete=models.CASCADE)

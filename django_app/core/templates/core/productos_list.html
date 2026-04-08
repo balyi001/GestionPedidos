@@ -27,8 +27,8 @@
                     </td>
                     <td class="text-center">
                         <div class="btn-group">
-                            <a href="{% url 'editar_producto' p.id %}" class="btn btn-warning btn-sm">Editar</a>
-                            <button onclick="confirmarAccion('{% url 'eliminar_producto' p.id %}', '¿Realmente desea eliminar este producto?')" class="btn btn-danger btn-sm">Eliminar</button>
+                            <a href="{% url 'editar_producto' p.id %}" class="btn btn-warning btn-sm">✏️</a>
+                            <button onclick="confirmarAccion('{% url 'eliminar_producto' p.id %}', '¿Realmente desea eliminar este producto?')" class="btn btn-danger btn-sm">🗑️</button>
                         </div>
                     </td>
                 </tr>
