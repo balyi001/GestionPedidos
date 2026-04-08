@@ -1,0 +1,85 @@
+{% extends 'core/base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">Gestión de Pedidos</h4>
+        <div class="btn-group">
+            <a href="{% url 'exportar_excel' %}" class="btn btn-success btn-sm">📊 Excel</a>
+            <a href="{% url 'exportar_pdf' %}" class="btn btn-danger btn-sm">📄 PDF</a>
+            <a href="{% url 'crear_pedido' %}" class="btn btn-light btn-sm ms-2">+ Nuevo Pedido</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Producto (Cant)</th>
+                    <th>Subtotal</th>
+                    <th>Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in page_obj %}
+                <tr>
+                    <td>{{ p.fecha|date:"d/m/Y H:i" }}</td>
+                    
+                    <td><strong>{{ p.cliente.nombre }}</strong></td>
+                    
+                    <td>
+                        {% for d in p.detalles.all %}
+                            {{ d.producto.nombre }} (x{{ d.cantidad }})
+                        {% empty %}
+                            <span class="text-muted">Sin productos</span>
+                        {% endfor %}
+                    </td>
+                    
+                    <td class="text-success fw-bold">
+                        {% for d in p.detalles.all %}
+                            ${{ d.subtotal|intcomma }}
+                        {% empty %}
+                            $0
+                        {% endfor %}
+                    </td>
+                    
+                    <td>
+                        <span class="badge {% if p.estado == 'Pendiente' %}bg-warning text-dark{% elif p.estado == 'Enviado' %}bg-info{% else %}bg-success{% endif %}">
+                            {{ p.estado }}
+                        </span>
+                    </td>
+                    
+                    <td class="text-center">
+                        <div class="btn-group">
+                            <a href="{% url 'editar_pedido' p.id %}" class="btn btn-warning btn-sm">Editar</a>
+                            <button onclick="confirmarAccion('{% url 'eliminar_pedido' p.id %}', '¿Realmente desea eliminar este pedido?')" class="btn btn-danger btn-sm">Eliminar</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No hay pedidos registrados en el sistema.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if page_obj.has_other_pages %}
+        <nav>
+            <ul class="pagination justify-content-center mt-3">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

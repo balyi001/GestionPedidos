@@ -1,0 +1,54 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">{% if cliente %}Editar Cliente: {{ cliente.nombre }}{% else %}Nuevo Cliente{% endif %}</h5>
+            </div>
+            <div class="card-body">
+                <form id="formCliente" method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo</label>
+                        <input type="text" name="nombre" class="form-control" value="{{ cliente.nombre|default:'' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Correo Electrónico</label>
+                        <input type="email" name="correo" class="form-control" value="{{ cliente.correo|default:'' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" name="telefono" class="form-control" value="{{ cliente.telefono|default:'' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <textarea name="direccion" class="form-control" rows="2">{{ cliente.direccion|default:'' }}</textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" onclick="confirmarGuardar()" class="btn btn-primary">
+                            {% if cliente %}Actualizar Cliente{% else %}Guardar Cliente{% endif %}
+                        </button>
+                        <a href="{% url 'listar_clientes' %}" class="btn btn-light border">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarGuardar() {
+    Swal.fire({
+        title: '¿Realmente desea guardar los cambios?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) { document.getElementById('formCliente').submit(); }
+    })
+}
+</script>
+{% endblock %}

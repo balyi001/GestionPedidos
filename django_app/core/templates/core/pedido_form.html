@@ -1,0 +1,82 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">{% if pedido %}Modificar Pedido #{{ pedido.id }}{% else %}🛒 Nuevo Pedido{% endif %}</h5>
+            </div>
+            <div class="card-body p-4">
+                <form id="formAccion" method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cliente</label>
+                        <select name="cliente" class="form-select" required>
+                            <option value="">Seleccione un cliente</option>
+                            {% for c in clientes %}
+                            <option value="{{ c.id }}" {% if pedido.cliente.id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Producto</label>
+                            <select name="producto" class="form-select" required>
+                                <option value="">Seleccione producto</option>
+                                {% for p in productos %}
+                                <option value="{{ p.id }}" {% if detalle.producto.id == p.id %}selected{% endif %}>
+                                    {{ p.nombre }} (Stock: {{ p.stock }}) - ${{ p.precio }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Cantidad</label>
+                            <input type="number" name="cantidad" class="form-control" value="{{ detalle.cantidad|default:1 }}" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Estado del Envío</label>
+                        <select name="estado" class="form-select">
+                            <option value="Pendiente" {% if pedido.estado == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                            <option value="Enviado" {% if pedido.estado == 'Enviado' %}selected{% endif %}>Enviado</option>
+                            <option value="Entregado" {% if pedido.estado == 'Entregado' %}selected{% endif %}>Entregado</option>
+                        </select>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="button" 
+                                onclick="confirmarSubmit('¿Realmente desea {% if pedido %}editar{% else %}guardar{% endif %} este pedido?')" 
+                                class="btn {% if pedido %}btn-warning{% else %}btn-primary{% endif %} shadow-sm">
+                            {% if pedido %}Actualizar Pedido{% else %}Confirmar Pedido{% endif %}
+                        </button>
+                        <a href="{% url 'listar_pedidos' %}" class="btn btn-light border">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarSubmit(mensaje) {
+    Swal.fire({
+        title: mensaje,
+        text: "Verifique que el stock y los datos sean correctos.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#aaa',
+        confirmButtonText: 'Sí, proceder',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('formAccion').submit();
+        }
+    })
+}
+</script>
+{% endblock %}

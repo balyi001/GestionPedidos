@@ -1,0 +1,56 @@
+{% extends 'core/base.html' %}
+{% load humanize %} {% block content %}
+<div class="card shadow">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">Inventario de Productos</h4>
+        <a href="{% url 'crear_producto' %}" class="btn btn-light btn-sm">+ Nuevo Producto</a>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Stock Actual</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in page_obj %}
+                <tr>
+                    <td><strong>{{ p.nombre }}</strong></td>
+                    <td><strong class="text-success">${{ p.precio|intcomma }}</strong></td>
+                    <td>
+                        <span class="badge {% if p.stock > 5 %}bg-primary{% elif p.stock > 0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                            {{ p.stock }} unidades
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group">
+                            <a href="{% url 'editar_producto' p.id %}" class="btn btn-warning btn-sm">Editar</a>
+                            <button onclick="confirmarAccion('{% url 'eliminar_producto' p.id %}', '¿Realmente desea eliminar este producto?')" class="btn btn-danger btn-sm">Eliminar</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-4 text-muted">No hay productos en inventario.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if page_obj.has_other_pages %}
+        <nav>
+            <ul class="pagination justify-content-center mt-3">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

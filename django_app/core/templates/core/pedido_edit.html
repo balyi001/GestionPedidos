@@ -1,0 +1,22 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-warning"><h5>Editar Estado Pedido #{{ pedido.id }}</h5></div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <label>Estado Actual</label>
+                    <select name="estado" class="form-select mb-3">
+                        <option value="Pendiente" {% if pedido.estado == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="Enviado" {% if pedido.estado == 'Enviado' %}selected{% endif %}>Enviado</option>
+                        <option value="Entregado" {% if pedido.estado == 'Entregado' %}selected{% endif %}>Entregado</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary w-100">Actualizar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
