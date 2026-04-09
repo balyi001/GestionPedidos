@@ -1,7 +1,8 @@
 {% extends 'core/base.html' %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8"> <div class="card shadow border-0">
+    <div class="col-md-8"> 
+        <div class="card shadow border-0">
             <div class="card-header bg-primary text-white py-3">
                 <h5 class="mb-0">{% if pedido %}Modificar Pedido #{{ pedido.id }}{% else %}🛒 Nuevo Pedido{% endif %}</h5>
             </div>
@@ -26,7 +27,7 @@
                         </label>
                         
                         <div id="productos-container">
-                            {% if pedido %}
+                            {% if pedido.detalles.all %}
                                 {% for det in pedido.detalles.all %}
                                 <div class="row g-2 mb-2 producto-fila">
                                     <div class="col-md-7">
@@ -47,25 +48,29 @@
                                 </div>
                                 {% endfor %}
                             {% else %}
-                                <div class="row g-2 mb-2 producto-fila">
-                                    <div class="col-md-7">
-                                        <select name="producto[]" class="form-select" required>
-                                            <option value="">Seleccione producto</option>
-                                            {% for p in productos %}
-                                            <option value="{{ p.id }}">{{ p.nombre }} (Stock: {{ p.stock }})</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="number" name="cantidad[]" class="form-control" placeholder="Cant." min="1" required>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-danger w-100 btn-remove" style="display:none;">×</button>
-                                    </div>
-                                </div>
+                                <p id="vacio-msg" class="text-muted text-center py-2">No hay productos seleccionados.</p>
                             {% endif %}
                         </div>
                     </div>
+
+                    <template id="producto-molde">
+                        <div class="row g-2 mb-2 producto-fila">
+                            <div class="col-md-7">
+                                <select name="producto[]" class="form-select" required>
+                                    <option value="">Seleccione producto</option>
+                                    {% for p in productos %}
+                                    <option value="{{ p.id }}">{{ p.nombre }} (Stock: {{ p.stock }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" name="cantidad[]" class="form-control" placeholder="Cant." min="1" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-outline-danger w-100 btn-remove">×</button>
+                            </div>
+                        </div>
+                    </template>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Estado del Envío</label>
@@ -92,27 +97,24 @@
 </div>
 
 <script>
-// Lógica para añadir filas
+// NUEVA LÓGICA: Usa el molde, no filas existentes
 document.getElementById('add-product').addEventListener('click', function() {
     const container = document.getElementById('productos-container');
-    const rows = container.querySelectorAll('.producto-fila');
-    const newRow = rows[0].cloneNode(true);
+    const molde = document.getElementById('producto-molde').content.cloneNode(true);
     
-    // Limpiar campos
-    const select = newRow.querySelector('select');
-    const input = newRow.querySelector('input');
-    select.value = "";
-    input.value = "";
+    // Quitar mensaje de "vacio" si existe
+    const msg = document.getElementById('vacio-msg');
+    if (msg) msg.remove();
+
+    // Configurar botón eliminar de la nueva fila
+    molde.querySelector('.btn-remove').onclick = function() {
+        this.closest('.producto-fila').remove();
+    };
     
-    // Mostrar botón eliminar
-    const removeBtn = newRow.querySelector('.btn-remove');
-    removeBtn.style.display = 'block';
-    removeBtn.onclick = function() { newRow.remove(); };
-    
-    container.appendChild(newRow);
+    container.appendChild(molde);
 });
 
-// Lógica para botones eliminar existentes (en edición)
+// Configurar botones eliminar iniciales
 document.querySelectorAll('.btn-remove').forEach(btn => {
     btn.onclick = function() { btn.closest('.producto-fila').remove(); };
 });
@@ -125,9 +127,7 @@ function confirmarSubmit(mensaje) {
         confirmButtonText: 'Sí, proceder',
         cancelButtonText: 'Cancelar'
     }).then((result) => {
-        if (result.isConfirmed) {
-            document.getElementById('formAccion').submit();
-        }
+        if (result.isConfirmed) document.getElementById('formAccion').submit();
     })
 }
 </script>

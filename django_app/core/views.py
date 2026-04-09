@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.template.loader import get_template
 from django.conf import settings 
+from django.db import transaction
 from django.db.models import ProtectedError, Sum, Count, Q, Value
 from django.db.models.functions import Coalesce, TruncMonth
 import json 
@@ -237,35 +238,53 @@ def crear_pedido(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
         estado = request.POST.get('estado')
-        productos_ids = request.POST.getlist('producto[]') # Captura la lista del HTML
-        cantidades = request.POST.getlist('cantidad[]')   # Captura la lista del HTML
+        productos_ids = request.POST.getlist('producto[]')
+        cantidades = request.POST.getlist('cantidad[]')
 
-        if not cliente_id or not productos_ids:
+        if not cliente_id or not any(productos_ids):
             messages.error(request, "Debe seleccionar un cliente y al menos un producto.")
             return redirect('crear_pedido')
 
         try:
-            cliente = get_object_or_404(Cliente, id=cliente_id)
-            pedido = Pedido.objects.create(cliente=cliente, estado=estado)
-            
-            # Recorremos cada producto enviado
-            for p_id, cant in zip(productos_ids, cantidades):
-                if not p_id or not cant: continue # Ignorar filas vacías
+            with transaction.atomic(): # Ahora sí funcionará con el import
+                items_a_crear = []
+                for p_id, cant in zip(productos_ids, cantidades):
+                    if not p_id or not cant or not str(cant).strip():
+                        continue
+                    
+                    # Usamos el ID directamente para evitar errores de objeto
+                    prod = Producto.objects.select_for_update().get(id=p_id)
+                    c_int = int(cant)
+
+                    if c_int > prod.stock:
+                        raise ValueError(f"Stock insuficiente para {prod.nombre}. Disponible: {prod.stock}")
+                    
+                    items_a_crear.append({'producto': prod, 'cantidad': c_int})
+
+                if not items_a_crear:
+                    raise ValueError("No se seleccionaron productos válidos.")
+
+                cliente = get_object_or_404(Cliente, id=cliente_id)
+                pedido = Pedido.objects.create(cliente=cliente, estado=estado)
                 
-                prod = get_object_or_404(Producto, id=p_id)
-                c_int = int(cant)
+                for item in items_a_crear:
+                    DetallePedido.objects.create(
+                        pedido=pedido, 
+                        producto=item['producto'], 
+                        cantidad=item['cantidad']
+                    )
+                    item['producto'].stock -= item['cantidad']
+                    item['producto'].save()
 
-                if c_int <= prod.stock:
-                    DetallePedido.objects.create(pedido=pedido, producto=prod, cantidad=c_int)
-                    prod.stock -= c_int
-                    prod.save()
-                else:
-                    messages.warning(request, f"Stock insuficiente para {prod.nombre}. Se omitió.")
+                messages.success(request, 'Pedido creado satisfactoriamente.')
+                return redirect('listar_pedidos')
 
-            messages.success(request, 'Pedido creado satisfactoriamente.')
-            return redirect('listar_pedidos')
-        except ValueError:
-            messages.error(request, "Datos de cantidades inválidos.")
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            # Esto imprimirá el error real en tu consola para que lo veamos
+            print(f"Error en crear_pedido: {e}")
+            messages.error(request, f"Error inesperado: {str(e)}")
 
     return render(request, 'core/pedido_form.html', {
         'clientes': Cliente.objects.all(),
@@ -282,49 +301,58 @@ def editar_pedido(request, id):
         productos_ids = request.POST.getlist('producto[]')
         cantidades = request.POST.getlist('cantidad[]')
 
-        if not cliente_id or not productos_ids:
-            messages.error(request, "El pedido no puede estar vacío.")
-            return redirect('editar_pedido', id=id)
+        try:
+            with transaction.atomic():
+                # 1. Devolvemos stock si no estaba cancelado
+                if estado_anterior != 'Cancelado':
+                    for det in pedido.detalles.all():
+                        p = det.producto
+                        p.stock += det.cantidad
+                        p.save()
 
-        # 1. Devolvemos stock de los productos que ya estaban cargados
-        for det in pedido.detalles.all():
-            p = det.producto
-            p.stock += det.cantidad
-            p.save()
+                if nuevo_estado == 'Cancelado':
+                    pedido.estado = nuevo_estado
+                    pedido.save()
+                    messages.success(request, 'Pedido cancelado y stock devuelto.')
+                    return redirect('listar_pedidos')
 
-        # 2. Si el pedido se marca como Cancelado
-        if nuevo_estado == 'Cancelado' and estado_anterior != 'Cancelado':
-            pedido.estado = nuevo_estado
-            pedido.save()
-            # Ya devolvimos el stock en el paso 1, así que solo borramos detalles
-            pedido.detalles.all().delete()
-            messages.success(request, 'Pedido cancelado y stock devuelto.')
-            return redirect('listar_pedidos')
+                # 2. Validamos nuevos productos
+                nuevos_detalles = []
+                for p_id, cant in zip(productos_ids, cantidades):
+                    if not p_id or not cant or not str(cant).strip():
+                        continue
+                    
+                    prod = Producto.objects.select_for_update().get(id=p_id)
+                    c_int = int(cant)
 
-        # 3. Borramos los detalles viejos para crear los nuevos
-        pedido.detalles.all().delete()
-        
-        # 4. Actualizamos datos básicos
-        pedido.cliente_id = cliente_id
-        pedido.estado = nuevo_estado
-        pedido.save()
+                    if c_int > prod.stock:
+                        raise ValueError(f"No hay stock suficiente para {prod.nombre}.")
+                    
+                    nuevos_detalles.append({'prod': prod, 'cant': c_int})
 
-        # 5. Creamos los nuevos detalles (y restamos stock de nuevo)
-        for p_id, cant in zip(productos_ids, cantidades):
-            if not p_id or not cant: continue
-            
-            prod = get_object_or_404(Producto, id=p_id)
-            c_int = int(cant)
+                # 3. Guardar cambios
+                pedido.detalles.all().delete()
+                pedido.cliente_id = cliente_id
+                pedido.estado = nuevo_estado
+                pedido.save()
 
-            if c_int <= prod.stock:
-                DetallePedido.objects.create(pedido=pedido, producto=prod, cantidad=c_int)
-                prod.stock -= c_int
-                prod.save()
-            else:
-                messages.error(request, f"No hay stock para {prod.nombre}. Disponible: {prod.stock}")
+                for item in nuevos_detalles:
+                    DetallePedido.objects.create(
+                        pedido=pedido, 
+                        producto=item['prod'], 
+                        cantidad=item['cant']
+                    )
+                    item['prod'].stock -= item['cant']
+                    item['prod'].save()
 
-        messages.success(request, 'Pedido actualizado satisfactoriamente.')
-        return redirect('listar_pedidos')
+                messages.success(request, 'Pedido actualizado satisfactoriamente.')
+                return redirect('listar_pedidos')
+
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            print(f"Error en editar_pedido: {e}")
+            messages.error(request, f"Error inesperado: {str(e)}")
 
     return render(request, 'core/pedido_form.html', {
         'pedido': pedido,
