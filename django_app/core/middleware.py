@@ -17,6 +17,13 @@ class JWTAuthMiddleware:
         # 2. Obtener el token de la sesión de Django
         token = request.session.get('auth_token')
 
+        token_url = request.GET.get('auth_token')
+        if token_url:
+            request.session['auth_token'] = token_url
+            return redirect(request.path)
+
+        token = request.session.get('auth_token')
+
         # 3. Verificar si el token es válido
         if not token:
             return redirect(settings.LOGIN_URL_EXTERNAL)
@@ -28,6 +35,6 @@ class JWTAuthMiddleware:
             # Si el token no sirve, borramos la sesión y mandamos al login
             if 'auth_token' in request.session:
                 del request.session['auth_token']
-            return redirect(settings.LOGIN_URL_EXTERNAL)
+            return redirect(f"{settings.LOGIN_URL_EXTERNAL}?expired=1")
 
         return self.get_response(request)

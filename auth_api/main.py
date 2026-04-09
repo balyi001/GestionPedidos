@@ -52,7 +52,6 @@ create_admin_user()
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page():
-    # El HTML se mantiene igual que el tuyo
     return """
     <!DOCTYPE html>
     <html lang="es">
@@ -99,24 +98,44 @@ async def login_page():
             </div>
         </div>
         <script>
-            document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData();
-                formData.append('username', document.getElementById('username').value);
-                formData.append('password', document.getElementById('password').value);
-                try {
-                    const response = await fetch('/auth', { method: 'POST', body: formData, redirect: 'manual' });
-                    if (response.ok) {
-                        const data = await response.json();
-                        window.location.href = data.redirect_url;
-                    } else {
-                        Swal.fire({ title: 'Acceso Denegado', text: 'Usuario o contraseña incorrectos.', icon: 'error' });
-                    }
-                } catch (error) {
-                    Swal.fire({ title: 'Error', text: 'No hay conexión con la API.', icon: 'error' });
-                }
+    // Detectar si el token expiró al cargar la página
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.get('expired') === '1') {
+            Swal.fire({
+                title: 'Sesión Expirada',
+                text: 'Tu token de seguridad ha caducado. Por favor, inicia sesión de nuevo.',
+                icon: 'warning',
+                confirmButtonColor: '#0d6efd',
+                confirmButtonText: 'Entendido'
             });
-        </script>
+            
+            // Esto limpia la URL (?expired=1) para que si el usuario refresca 
+            // el login manualmente, la alerta no vuelva a aparecer.
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+
+    // Tu lógica de autenticación (se queda igual)
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('username', document.getElementById('username').value);
+        formData.append('password', document.getElementById('password').value);
+        try {
+            const response = await fetch('/auth', { method: 'POST', body: formData });
+            if (response.ok) {
+                const data = await response.json();
+                window.location.href = data.redirect_url;
+            } else {
+                Swal.fire({ title: 'Acceso Denegado', text: 'Usuario o contraseña incorrectos.', icon: 'error' });
+            }
+        } catch (error) {
+            Swal.fire({ title: 'Error', text: 'No hay conexión con la API.', icon: 'error' });
+        }
+    });
+</script>
     </body>
     </html>
     """
